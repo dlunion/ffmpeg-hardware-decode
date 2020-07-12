@@ -4,10 +4,9 @@ Use ffmpeg and NVCodec to hardware decode video or video stream.   in DNN infere
 
 
 ##### Decoder
+Video.mp4   ->   cuvid(GPU Decoder)   ->   GPU Memory  ->   Normialize Cuda Kernel   ->   float*  Channel  based   ->   DNN Inference
 
-**video.mp4   ->   cuvid(GPU Decoder)   ->   GPU Memory  ->   Normialize Cuda Kernel   ->   float*  Channel  based   ->   DNN Inference**
 
-​	
 
 Input Format:  			  Supported File/USB Camera/RTSP/RTMP/CustomStream etc.
 
@@ -16,10 +15,9 @@ Normialize Kernel:   	Subtract mean and divide std, convert YUV to BGR or RGB
 
 
 ##### Encoder
+Camera/Other Source   ->   nvenc(GPU Encoder)   ->   Custom Memory Stream/File
 
-**Camera/Other Source   ->   nvenc(GPU Encoder)   ->   Custom Memory Stream/File**
 
-​	
 
 Output Format:   		Only supported mp4
 
@@ -75,6 +73,6 @@ Change the directory in *_build file, to your path
 ### Run examples
 
 ```bash
-make run -j8
+> make run -j8
 ```
 
