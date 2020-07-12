@@ -5,4 +5,54 @@ Use ffmpeg and NVCodec to hardware decode video or video stream.   in DNN infere
 
 
 
-a
+## Environment
+
+* ffmpeg 4.2
+* nasm 2.14.02
+* nv-codec-headers
+* opencv 4.2.0 [optional]
+
+* nvcodec-VideoCodecSDK 10.0.26
+* cuda 10.2
+* x264-snapshot-20190704-2245-stable
+* GPU 2080Ti [optional]
+
+
+
+
+
+## Startup
+
+* note:   /datav/newbb/lean       					is root directory
+  * ​     /datav/newbb/lean/build         	   lean code directory
+  * ​     /datav/newbb/lean/lean                 lean build result binary directory
+
+Change the directory in *_build file, to your path
+
+```bash
+> mkdir build && mkdir lean
+> cd build
+> tar -zxvf ../lean.build.tar.gz
+> mv Video_Codec_SDK_10.0.26 ../lean/
+```
+
+
+
+* **Change  /datav/newbb/lean  to your path**, after to run this code
+
+```bash
+> bash nasm_build
+> bash nvcodec_build
+> bash x264_build
+> bash ffmpeg_build
+> bash opencv_build
+```
+
+
+
+### Run examples
+
+```bash
+make run -j8
+```
+
