@@ -17,6 +17,8 @@ Use ffmpeg and NVCodec to hardware decode video or video stream.   in DNN infere
 * x264-snapshot-20190704-2245-stable
 * GPU 2080Ti [optional]
 
+Or download all lean code [ffmpeg.hw.lean.code.tar.gz](http://zifuture.com:1000/fs/16.std/ffmpeg.hw.lean.code.tar.gz) 
+
 
 
 
@@ -32,7 +34,7 @@ Change the directory in *_build file, to your path
 ```bash
 > mkdir build && mkdir lean
 > cd build
-> tar -zxvf ../lean.build.tar.gz
+> tar -zxvf ../ffmpeg.hw.lean.code.tar.gz
 > mv Video_Codec_SDK_10.0.26 ../lean/
 ```
 
