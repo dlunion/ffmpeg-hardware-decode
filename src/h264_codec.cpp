@@ -759,7 +759,14 @@ namespace H264Codec{
             av_init_packet(pkt_.get());
 
             //av_dump_format(format_ctx_.get(), 0, file.c_str(), 0);
-            fps_ = format_ctx_->streams[video_stream_]->avg_frame_rate.num / format_ctx_->streams[video_stream_]->avg_frame_rate.den;
+            //fps_ = format_ctx_->streams[video_stream_]->avg_frame_rate.num / format_ctx_->streams[video_stream_]->avg_frame_rate.den;
+            int num = format_ctx_->streams[video_stream_]->avg_frame_rate.num;
+            int den = format_ctx_->streams[video_stream_]->avg_frame_rate.den;
+
+            if(den != 0)
+                fps_ = num / den;
+            else
+                fps_ = 0;
 
             if(this->to_ == DecodeTo::Cuda){
                 cuda_image_ = createCudaImage(codec_ctx_->width, codec_ctx_->height);
