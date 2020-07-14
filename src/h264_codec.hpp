@@ -229,14 +229,6 @@ namespace H264Codec{
          *      That stream data length
          **/
         virtual size_t size() const = 0;
-
-        /**
-         *   Get stream data reference
-         * 
-         * return:
-         *      That stream data reference
-         **/
-        virtual const std::shared_ptr<std::vector<unsigned char>> dataref() const = 0;
     };
 
 

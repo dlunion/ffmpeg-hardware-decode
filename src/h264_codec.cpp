@@ -31,18 +31,31 @@ namespace H264Codec{
     public:
         MemoryStream(){
             is_ref_datas_ = false;
+            block_if_no_data_ = false;
+
             datas_.reset(new vector<uchar>());
+            lck_.reset(new mutex());
+            eof_.reset(new bool(false));
+            cv_.reset(new condition_variable());
         }
 
-        MemoryStream(IOStream* ref){
+        MemoryStream(IOStream* ref, bool block_if_no_data=true){
             is_ref_datas_ = true;
-            eof_ = true;
-            datas_ = ref->dataref();
+            block_if_no_data_ = block_if_no_data;
+
+            auto mem = static_cast<MemoryStream*>(ref);
+            datas_ = mem->datas_;
+            lck_ = mem->lck_;
+            eof_ = mem->eof_;
+            cv_ = mem->cv_;
+            cursor_ = 0;
         }
 
         virtual ~MemoryStream(){
-            eof_ = true;
-            cv_.notify_all();
+
+            std::unique_lock<mutex> l(*lck_);
+            *eof_ = true;
+            cv_->notify_all();
         }
 
         virtual void write(const void* data, size_t size) override{
@@ -53,7 +66,7 @@ namespace H264Codec{
                 return;
             }
 
-            std::unique_lock<mutex> l(lck_);
+            std::unique_lock<mutex> l(*lck_);
 
             if(cursor_ == datas_->size())
                 // if append as end
@@ -67,7 +80,7 @@ namespace H264Codec{
             }
 
             cursor_ += size;
-            cv_.notify_all();
+            cv_->notify_all();
         }
 
         virtual void send() override{
@@ -78,9 +91,9 @@ namespace H264Codec{
                 return;
             }
 
-            std::unique_lock<mutex> l(lck_);
-            eof_ = true;
-            cv_.notify_all();
+            std::unique_lock<mutex> l(*lck_);
+            *eof_ = true;
+            cv_->notify_all();
         }
 
         // 0 if status is success, else status = 1
@@ -89,7 +102,7 @@ namespace H264Codec{
         // SEEK_END				no support
         virtual int64_t seek(int64_t offset, int whence) override{
 
-            std::unique_lock<mutex> l(lck_);
+            std::unique_lock<mutex> l(*lck_);
             const static int64_t ret_success = 0;
             const static int64_t ret_failure = 1;
 
@@ -119,10 +132,6 @@ namespace H264Codec{
             return ret_success;
         }
 
-         virtual const std::shared_ptr<std::vector<unsigned char>> dataref() const override{
-             return this->datas_;
-         }
-
         const void* data() const override{
             return this->datas_->data();
         }
@@ -134,14 +143,12 @@ namespace H264Codec{
         // block if data not ready
         virtual size_t read(void* data, size_t size) override{
 
-            std::unique_lock<mutex> l(lck_);
-            cv_.wait(l, [&]{return cursor_ < datas_->size() || eof_;});
+            std::unique_lock<mutex> l(*lck_);
+            cv_->wait(l, [&]{return cursor_ < datas_->size() || *eof_ || !block_if_no_data_;});
 
             int64_t readlen = min((int64_t)size, (int64_t)datas_->size() - cursor_);
-            if(readlen <= 0){
-                fprintf(stderr, "invalid len <= 0, cursor = %d\n", cursor_);
+            if(readlen <= 0)
                 return 0;
-            }
 
             memcpy(data, datas_->data() + cursor_, readlen);
             cursor_ += readlen;
@@ -150,11 +157,11 @@ namespace H264Codec{
 
         virtual bool eof() override{
 
-            std::unique_lock<mutex> l((mutex&)lck_);
+            std::unique_lock<mutex> l((mutex&)*lck_);
             if(cursor_ < datas_->size())
                 return false;
 
-            return eof_;
+            return *eof_;
         }
 
         virtual int64_t tell() override{
@@ -163,11 +170,12 @@ namespace H264Codec{
 
     private:
         int64_t cursor_ = 0;
-        bool eof_ = false;
+        shared_ptr<bool> eof_;
         shared_ptr<vector<uchar>> datas_;
-        condition_variable cv_;
-        mutex lck_;
+        shared_ptr<condition_variable> cv_;
+        shared_ptr<mutex> lck_;
         bool is_ref_datas_ = false;
+        bool block_if_no_data_ = true;
     };
 
 
@@ -305,7 +313,7 @@ namespace H264Codec{
         unsigned char* stream_read_buffer = (unsigned char*)av_malloc(buffer_size);
 
         // reference for s->pb->opaque stream
-        MemoryStream* stream_ptr = new MemoryStream((IOStream*)s->pb->opaque);
+        MemoryStream* stream_ptr = new MemoryStream((IOStream*)s->pb->opaque, false);
         *pb = avio_alloc_context(stream_read_buffer, buffer_size, 0, 
             stream_ptr, &local_read_packet_ios, nullptr, &local_seek_ios);
         return 0;
@@ -676,7 +684,7 @@ namespace H264Codec{
 
             this->to_ = to;
             this->source_ = source;
-
+            
             auto format_ctx_ptr = avformat_alloc_context();
             if(source_.type() == SourceType::File){
 
@@ -759,7 +767,13 @@ namespace H264Codec{
             av_init_packet(pkt_.get());
 
             //av_dump_format(format_ctx_.get(), 0, file.c_str(), 0);
-            fps_ = format_ctx_->streams[video_stream_]->avg_frame_rate.num / format_ctx_->streams[video_stream_]->avg_frame_rate.den;
+            int num = format_ctx_->streams[video_stream_]->avg_frame_rate.num;
+            int den = format_ctx_->streams[video_stream_]->avg_frame_rate.den;
+
+            if(den != 0)
+                fps_ = num / den;
+            else
+                fps_ = 0;
 
             if(this->to_ == DecodeTo::Cuda){
                 cuda_image_ = createCudaImage(codec_ctx_->width, codec_ctx_->height);
