@@ -693,12 +693,13 @@ namespace H264Codec{
                     av_dict_set(&options, "rtsp_transport", "tcp", 0);
 
                 int ret = avformat_open_input(&format_ctx_ptr, source_.file().c_str(), nullptr, &options);
-                format_ctx_.reset(format_ctx_ptr, decoder_io_free_format_context);
-
+           
                 if (ret != 0) {
                     fprintf(stderr, "open %s fail.\n", source_.file().c_str());
                     return false;
                 }
+		    
+		format_ctx_.reset(format_ctx_ptr, decoder_io_free_format_context);
             }else if(source_.type() == SourceType::Stream){
 
                 // reference other stream for read
@@ -711,12 +712,12 @@ namespace H264Codec{
 
                 format_ctx_ptr->pb = pb;
                 format_ctx_ptr->flags |= AVFMT_FLAG_CUSTOM_IO;
-                format_ctx_.reset(format_ctx_ptr, decoder_stream_free_format_context);
 
                 if (avformat_open_input(&format_ctx_ptr, nullptr, nullptr, nullptr) != 0) {
                     fprintf(stderr, "open stream fail.\n");
                     return false;
                 }
+		format_ctx_.reset(format_ctx_ptr, decoder_stream_free_format_context);
             }else{
                 fprintf(stderr, "unsupport source: %d\n", source_.type());
                 return false;
